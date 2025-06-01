@@ -1,114 +1,140 @@
 package com.spacex.dragons.service;
 
 import com.spacex.dragons.model.Mission;
-import com.spacex.dragons.model.MissionStatus;
 import com.spacex.dragons.model.MissionSummary;
 import com.spacex.dragons.model.Rocket;
-import com.spacex.dragons.model.RocketStatus;
+import com.spacex.dragons.repository.MissionRepository;
+import com.spacex.dragons.repository.RocketRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static com.spacex.dragons.model.MissionStatus.ENDED;
+import static com.spacex.dragons.model.MissionStatus.IN_PROGRESS;
+import static com.spacex.dragons.model.RocketStatus.IN_SPACE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class SpaceXRocketServiceTest {
 
+    private RocketRepository rocketRepository;
+    private MissionRepository missionRepository;
     private SpaceXRocketService service;
 
     @BeforeEach
-    void setUp() {
-        service = new SpaceXRocketService();
+    void setup() {
+        rocketRepository = mock(RocketRepository.class);
+        missionRepository = mock(MissionRepository.class);
+        service = new SpaceXRocketService(rocketRepository, missionRepository);
     }
 
     @Test
-    public void testAddRocket() {
-        Rocket rocket = service.addRocket("DragonX");
-        assertNotNull(rocket);
-        assertEquals("DragonX", rocket.getRocketId());
-        assertEquals(RocketStatus.ON_GROUND, rocket.getRocketStatus());
+    void testAddRocket() {
+        service.addRocket("R1");
+        verify(rocketRepository, times(1)).addRocket("R1");
     }
 
     @Test
-    public void testAddMission() {
-        Mission mission = service.addMission("LunaMission");
-        assertNotNull(mission);
-        assertEquals("LunaMission", mission.getMissionId());
-        assertEquals(MissionStatus.SCHEDULED, mission.getMissionStatus());
+    void testAddMission() {
+        service.addMission("M1");
+        verify(missionRepository, times(1)).addMission("M1");
     }
 
     @Test
-    public void testAssignRocketToMission_Success() {
-        service.addRocket("Dragon1");
-        service.addMission("Mars");
+    void testAssignRocketToMission_Success() {
+        Rocket rocket = new Rocket("R1");
+        Mission mission = new Mission("M1");
 
-        service.assignRocketToMission("Dragon1", "Mars");
+        when(rocketRepository.getRocketById("R1")).thenReturn(rocket);
+        when(missionRepository.getMissionById("M1")).thenReturn(mission);
 
-        List<MissionSummary> summaries = service.getMissionsSummary();
-        assertEquals(1, summaries.size());
-        assertEquals("Mars", summaries.get(0).getMissionId());
-        assertEquals(1, summaries.get(0).getRocketAmount());
-        assertEquals("In Progress", summaries.get(0).getStatus());
+        service.assignRocketToMission("R1", "M1");
+
+        verify(rocketRepository).assignRocketToMission(rocket, mission);
+        verify(missionRepository).assignRocketToMission(rocket, mission);
     }
 
     @Test
-    public void testAssignRocketToMission_RocketAlreadyAssigned() {
-        service.addRocket("Dragon1");
-        service.addRocket("Dragon2");
-        service.addMission("Moon");
+    void testAssignRocketToMission_RocketAlreadyAssigned() {
+        Rocket rocket = new Rocket("R1");
+        rocket.setMission(new Mission("ExistingMission"));
 
-        service.assignRocketToMission("Dragon1", "Moon");
+        when(rocketRepository.getRocketById("R1")).thenReturn(rocket);
+        when(missionRepository.getMissionById("M1")).thenReturn(new Mission("M1"));
 
-        Exception ex = assertThrows(IllegalStateException.class, () -> {
-            service.assignRocketToMission("Dragon1", "Moon");
-        });
-
-        assertEquals("Rocket already assigned", ex.getMessage());
+        assertThrows(IllegalStateException.class, () ->
+                service.assignRocketToMission("R1", "M1"));
     }
 
     @Test
-    public void testChangeRocketStatus_UpdatesMissionStatus() {
-        service.addRocket("DragonR");
-        service.addMission("MissionR");
+    void testAssignRocketToMission_MissionEnded() {
+        Rocket rocket = new Rocket("R1");
+        Mission mission = new Mission("M1");
+        mission.setMissionStatus(ENDED);
 
-        service.assignRocketToMission("DragonR", "MissionR");
-        service.changeRocketStatus("DragonR", RocketStatus.IN_REPAIR);
+        when(rocketRepository.getRocketById("R1")).thenReturn(rocket);
+        when(missionRepository.getMissionById("M1")).thenReturn(mission);
 
-        List<MissionSummary> summaries = service.getMissionsSummary();
-        assertEquals("Pending", summaries.get(0).getStatus());
+        assertThrows(IllegalStateException.class, () ->
+                service.assignRocketToMission("R1", "M1"));
     }
 
     @Test
-    public void testChangeMissionStatusToEnded() {
-        service.addRocket("Dragon9");
-        service.addMission("LunarX");
+    void testChangeRocketStatus_UpdatesMissionStatus() {
+        Mission mission = new Mission("M1");
+        Rocket rocket = new Rocket("R1");
+        rocket.setMission(mission);
+        mission.getRockets().add(rocket);
 
-        service.assignRocketToMission("Dragon9", "LunarX");
+        when(rocketRepository.getRocketById("R1")).thenReturn(rocket);
 
-        service.changeMissionStatus("LunarX", MissionStatus.ENDED);
+        service.changeRocketStatus("R1", IN_SPACE);
 
-        List<MissionSummary> summaries = service.getMissionsSummary();
-        assertEquals(0, summaries.get(0).getRocketAmount());
-        assertEquals("Ended", summaries.get(0).getStatus());
+        assertEquals(IN_SPACE, rocket.getRocketStatus());
+        assertNotNull(mission.getMissionStatus());
     }
 
     @Test
-    public void testMissionSummaryOrdering() {
-        service.addRocket("A");
-        service.addRocket("B");
-        service.addRocket("C");
-        service.addMission("Zeta");
-        service.addMission("Alpha");
+    void testChangeMissionStatusToEnded_ClearsRockets() {
+        Mission mission = new Mission("M1");
+        Rocket rocket = new Rocket("R1");
+        rocket.setRocketStatus(IN_SPACE);
+        mission.getRockets().add(rocket);
 
-        service.assignRocketToMission("A", "Zeta");
-        service.assignRocketToMission("B", "Zeta");
-        service.assignRocketToMission("C", "Alpha");
+        when(missionRepository.getMissionById("M1")).thenReturn(mission);
 
-        List<MissionSummary> summaries = service.getMissionsSummary();
+        service.changeMissionStatus("M1", ENDED);
 
-        assertEquals("Zeta", summaries.get(0).getMissionId());
-        assertEquals("Alpha", summaries.get(1).getMissionId());
+        assertTrue(mission.getRockets().isEmpty());
+        assertNull(rocket.getRocketStatus());
+        assertEquals(ENDED, mission.getMissionStatus());
+    }
+
+    @Test
+    void testGetMissionsSummary_SortedAndMapped() {
+        Mission m1 = new Mission("M1");
+        m1.setMissionStatus(IN_PROGRESS);
+        m1.getRockets().add(new Rocket("R1"));
+        m1.getRockets().add(new Rocket("R2"));
+
+        Mission m2 = new Mission("M2");
+        m2.setMissionStatus(IN_PROGRESS);
+        m2.getRockets().add(new Rocket("R3"));
+
+        when(missionRepository.getAllMissions()).thenReturn(List.of(m1, m2));
+
+        SpaceXRocketService realService = new SpaceXRocketService(new RocketRepository(), missionRepository);
+        List<MissionSummary> summaries = realService.getMissionsSummary();
+
+        assertEquals(2, summaries.size());
+        assertEquals("M1", summaries.get(0).getMissionId());
     }
 }

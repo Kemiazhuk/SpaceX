@@ -1,4 +1,4 @@
-package com.spacex.dragons.strategy;
+package com.spacex.dragons.utils;
 
 import com.spacex.dragons.model.Mission;
 import com.spacex.dragons.model.MissionStatus;
@@ -8,24 +8,24 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static com.spacex.dragons.utils.MissionStatusUtil.calculateStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MissionStatusStrategyTest {
+public class MissionStatusUtilTest {
 
-    private final MissionStatusStrategy strategy = new MissionStatusStrategy();
 
     @Test
     void shouldReturnEndedIfMissionIsEnded() {
         Mission mission = new Mission("M1");
         mission.setMissionStatus(MissionStatus.ENDED);
-        assertEquals(MissionStatus.ENDED, strategy.calculateStatus(mission));
+        assertEquals(MissionStatus.ENDED, calculateStatus(mission));
     }
 
     @Test
     void shouldReturnScheduledIfNoRocketsAssigned() {
         Mission mission = new Mission("M2");
         mission.setMissionStatus(MissionStatus.SCHEDULED);
-        assertEquals(MissionStatus.SCHEDULED, strategy.calculateStatus(mission));
+        assertEquals(MissionStatus.SCHEDULED, calculateStatus(mission));
     }
 
     @Test
@@ -38,7 +38,7 @@ public class MissionStatusStrategyTest {
         r2.setRocketStatus(RocketStatus.IN_REPAIR);
 
         mission.setRockets(List.of(r1, r2));
-        assertEquals(MissionStatus.PENDING, strategy.calculateStatus(mission));
+        assertEquals(MissionStatus.PENDING, calculateStatus(mission));
     }
 
     @Test
@@ -51,7 +51,7 @@ public class MissionStatusStrategyTest {
         r2.setRocketStatus(RocketStatus.IN_SPACE);
 
         mission.setRockets(List.of(r1, r2));
-        assertEquals(MissionStatus.IN_PROGRESS, strategy.calculateStatus(mission));
+        assertEquals(MissionStatus.IN_PROGRESS, calculateStatus(mission));
     }
 
 }

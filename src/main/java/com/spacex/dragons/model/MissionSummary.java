@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public class MissionSummary {
     private String missionId;
-    private String status;
+    private MissionStatus status;
     private int rocketAmount;
     private List<RocketInfo> rocketInfo;
 }

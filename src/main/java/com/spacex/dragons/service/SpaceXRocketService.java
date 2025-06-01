@@ -8,34 +8,36 @@ import com.spacex.dragons.model.RocketInfo;
 import com.spacex.dragons.model.RocketStatus;
 import com.spacex.dragons.repository.MissionRepository;
 import com.spacex.dragons.repository.RocketRepository;
-import com.spacex.dragons.strategy.MissionStatusStrategy;
+import lombok.AllArgsConstructor;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SpaceXRocketService {
-    private final MissionStatusStrategy missionStatusStrategy = new MissionStatusStrategy();
-    private final RocketRepository rocketRepository = new RocketRepository();
-    private final MissionRepository missionRepository = new MissionRepository();
+import static com.spacex.dragons.utils.MissionStatusUtil.calculateStatus;
 
-    public Rocket addRocket(String rocketId) {
-        Rocket rocket = new Rocket(rocketId);
-        rocketRepository.addRocket(rocket);
-        return rocket;
+@AllArgsConstructor
+public class SpaceXRocketService {
+
+    private final RocketRepository rocketRepository;
+    private final MissionRepository missionRepository;
+
+    public void addRocket(String rocketId) {
+        rocketRepository.addRocket(rocketId);
     }
 
-    public Mission addMission(String missionId) {
-        Mission mission = new Mission(missionId);
-        missionRepository.addMission(mission);
-        return mission;
+    public void addMission(String missionId) {
+        missionRepository.addMission(missionId);
     }
 
     public void assignRocketToMission(String rocketId, String missionId) {
         Rocket rocket = rocketRepository.getRocketById(rocketId);
         Mission mission = missionRepository.getMissionById(missionId);
-        if (rocket == null || mission == null) {
-            throw new IllegalArgumentException("Not found");
+        if (rocket == null) {
+            throw new IllegalArgumentException("Rocket not found");
+        }
+        if (mission == null) {
+            throw new IllegalArgumentException("Mission not found");
         }
         if (rocket.getMission() != null) {
             throw new IllegalStateException("Rocket already assigned");
@@ -43,10 +45,9 @@ public class SpaceXRocketService {
         if (mission.getMissionStatus() == MissionStatus.ENDED) {
             throw new IllegalStateException("Mission ended");
         }
-        rocket.setMission(mission);
-        rocket.setRocketStatus(RocketStatus.IN_SPACE);
-        mission.getRockets().add(rocket);
-        mission.setMissionStatus(missionStatusStrategy.calculateStatus(mission));
+        rocketRepository.assignRocketToMission(rocket, mission);
+        missionRepository.assignRocketToMission(rocket, mission);
+
     }
 
     public void changeRocketStatus(String rocketId, RocketStatus status) {
@@ -57,7 +58,7 @@ public class SpaceXRocketService {
         Mission mission = rocket.getMission();
         if (mission != null) {
             rocket.setRocketStatus(status);
-            mission.setMissionStatus(missionStatusStrategy.calculateStatus(mission));
+            mission.setMissionStatus(calculateStatus(mission));
         }
     }
 
@@ -93,13 +94,13 @@ public class SpaceXRocketService {
                 .toList();
         return new MissionSummary(
                 mission.getMissionId(),
-                mission.getMissionStatus().getDescription(),
+                mission.getMissionStatus(),
                 mission.getRockets().size(),
                 rocketInfos
         );
     }
 
     private RocketInfo buildRocketInfo(Rocket rocket) {
-        return new RocketInfo(rocket.getRocketId(), rocket.getRocketStatus().getDescription());
+        return new RocketInfo(rocket.getRocketId(), rocket.getRocketStatus());
     }
 }

@@ -9,5 +9,5 @@ import lombok.Setter;
 @AllArgsConstructor
 public class RocketInfo {
     private String rocketId;
-    private String status;
+    private RocketStatus status;
 }
