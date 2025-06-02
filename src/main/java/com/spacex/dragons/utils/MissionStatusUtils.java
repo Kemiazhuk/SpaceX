@@ -6,7 +6,7 @@ import com.spacex.dragons.model.RocketStatus;
 
 import java.util.Objects;
 
-public class MissionStatusUtil {
+public class MissionStatusUtils {
 
     public static MissionStatus calculateStatus(Mission mission) {
         if (mission.getMissionStatus() == MissionStatus.ENDED) {

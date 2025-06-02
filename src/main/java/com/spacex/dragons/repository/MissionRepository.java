@@ -2,7 +2,7 @@ package com.spacex.dragons.repository;
 
 import com.spacex.dragons.model.Mission;
 import com.spacex.dragons.model.Rocket;
-import com.spacex.dragons.utils.MissionStatusUtil;
+import com.spacex.dragons.utils.MissionStatusUtils;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -27,7 +27,7 @@ public class MissionRepository implements IMissionRepository {
 
     public void assignRocketToMission(Rocket rocket, Mission mission) {
         mission.getRockets().add(rocket);
-        mission.setMissionStatus(MissionStatusUtil.calculateStatus(mission));
+        mission.setMissionStatus(MissionStatusUtils.calculateStatus(mission));
     }
 }
 

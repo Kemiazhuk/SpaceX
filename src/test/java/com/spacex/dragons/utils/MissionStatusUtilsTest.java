@@ -8,10 +8,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static com.spacex.dragons.utils.MissionStatusUtil.calculateStatus;
+import static com.spacex.dragons.utils.MissionStatusUtils.calculateStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MissionStatusUtilTest {
+public class MissionStatusUtilsTest {
 
 
     @Test
